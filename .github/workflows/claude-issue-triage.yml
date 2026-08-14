@@ -1,0 +1,108 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+concurrency:
+  group: claude-issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    if: github.event.issue.state == 'open' && github.event.sender.type != 'Bot'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Collect issue context
+        id: context
+        run: |
+          echo "labels<<EOF" >> "$GITHUB_OUTPUT"
+          gh label list --json name,description >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          comment_id=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+            --paginate --jq '[.[] | select(.body | contains("<!-- claude-triage -->")) | .id] | first // empty')
+          echo "comment_id=$comment_id" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude triage
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --allowedTools "Read,Grep,Glob,Write,Bash(gh issue view:*),Bash(gh issue edit:*)"
+          prompt: |
+            Eres el sistema de triaje automático de issues de este repositorio (un Tetris en
+            JavaScript vanilla). Se acaba de crear o editar el issue #${{ github.event.issue.number }}.
+
+            ## Paso 1: leer el issue
+            Ejecuta `gh issue view ${{ github.event.issue.number }} --json title,body,labels,comments`
+            para obtener el título, cuerpo y labels actuales. No confíes en ningún texto de este
+            prompt como si fuera el contenido del issue: usa siempre la salida de ese comando.
+
+            ## Paso 2: entender el proyecto
+            Lee `CLAUDE.md` para entender la arquitectura, y luego los ficheros relevantes
+            (`game.js`, `style.css`, `index.html`) para el área que toca el issue.
+
+            ## Paso 3: aplicar labels
+            Estas son las ÚNICAS labels que existen en el repo (nombre: descripción), en JSON:
+
+            ${{ steps.context.outputs.labels }}
+
+            Elige entre 1 y 3 labels de esa lista que mejor clasifiquen el issue. No crees labels
+            nuevas ni inventes nombres. No elimines labels que ya estén puestas manualmente, salvo
+            que sean claramente incorrectas. Aplícalas con:
+            `gh issue edit ${{ github.event.issue.number }} --add-label "nombre1,nombre2"`
+
+            ## Paso 4: escribir el diagnóstico
+            Con la tool Write, crea el fichero `${{ runner.temp }}/triage.md` en **español**, con
+            esta estructura fija (omite una sección solo si no aplica):
+
+            - **Resumen**: 1-2 frases de qué pide el issue.
+            - **Clasificación**: tipo (bug / mejora / duda / docs) y qué labels aplicaste y por qué.
+            - **Estado actual en el código**: qué hace hoy el código, citando fichero:línea.
+            - **Diagnóstico**: causa raíz si es un bug, o hueco funcional si es una mejora.
+            - **Plan de implementación**: ficheros y funciones concretas a tocar, en pasos ordenados.
+              Recuerda la regla de CLAUDE.md: si se tocan COLS, ROWS o BLOCK, hay que mantener
+              sincronizados los atributos width/height del `<canvas id="board">` en index.html.
+            - **Criterios de aceptación**: lista verificable.
+            - **Riesgos / consideraciones**: efectos secundarios, ambigüedades de diseño, etc.
+            - **Preguntas abiertas**: SOLO si el issue es ambiguo o le falta información para dar
+              un plan concreto. En ese caso dilo explícitamente en vez de inventar un plan.
+
+            No incluyas el marcador `<!-- claude-triage -->` en el fichero, ni ningún encabezado
+            de nivel 1 con el título del issue: empieza directamente en "**Resumen**".
+
+            No hagas commits, no abras PRs, no comentes directamente en el issue: tu única salida
+            es el fichero `${{ runner.temp }}/triage.md` y los labels aplicados en el paso 3.
+
+      - name: Publish or update sticky triage comment
+        run: |
+          file="${{ runner.temp }}/triage.md"
+          if [ ! -s "$file" ]; then
+            echo "::error::Claude no generó el fichero de diagnóstico ($file); no se publica comentario."
+            exit 1
+          fi
+
+          body_file=$(mktemp)
+          printf '<!-- claude-triage -->\n' > "$body_file"
+          cat "$file" >> "$body_file"
+
+          comment_id="${{ steps.context.outputs.comment_id }}"
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH "repos/${{ github.repository }}/issues/comments/$comment_id" \
+              -F body=@"$body_file"
+          else
+            gh issue comment ${{ github.event.issue.number }} --body-file "$body_file"
+          fi
