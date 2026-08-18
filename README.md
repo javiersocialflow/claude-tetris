@@ -21,6 +21,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
     - [3. `game.js`](#3-gamejs)
+    - [4. `highscores.js`](#4-highscoresjs)
     - [Flujo del juego](#flujo-del-juego)
   - [Tecnologías](#tecnologías)
   - [Estructura del proyecto](#estructura-del-proyecto)
@@ -41,6 +42,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
+- **Combo**: limpiezas de línea consecutivas (sin ningún lock "en vacío" entre medias) suman un bonus de `50 × combo × nivel`; se trackea el combo actual y el **combo máximo** alcanzado en la partida.
+- **Líneas máximas de una tacada**: se registra el mayor número de líneas limpiadas de un solo golpe (1–4, siendo 4 un Tetris).
 - **Pausa** y **Game Over** con opción de reinicio.
 
 ---
@@ -97,7 +100,7 @@ El juego se compone de tres archivos que cooperan:
 Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
-- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
+- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, `COMBO` (actual y máximo), vista de la siguiente pieza y la lista de controles.
 - Un overlay para los estados **PAUSA** y **GAME OVER**.
 
 ### 2. `style.css`
@@ -113,10 +116,21 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Detección de colisiones** (`collide`): comprueba que ninguna celda de la pieza salga del tablero ni se solape con bloques ya fijados.
 - **Wall kicks** (`tryRotate`): si la rotación choca, intenta desplazar la pieza ±1 y ±2 columnas antes de descartar el giro.
 - **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
-- **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
+- **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima. También trackea el **combo** (rachas de limpiezas consecutivas, con bonus de puntuación), el **combo máximo** (`maxCombo`) y el mayor número de líneas limpiadas de una sola vez (`maxLinesAtOnce`); estas variables quedan expuestas como estado global para que otras pantallas (game over, tabla de records) puedan leerlas.
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+
+### 4. `highscores.js`
+
+Módulo independiente y sin dependencias del DOM que persiste la tabla de puntuaciones altas en `localStorage` (clave `tetris.highscores`, payload versionado `{ v, scores, bestCombo, maxLines }`). Se carga con `<script src="highscores.js"></script>` **antes** que `game.js` y se auto-registra en `window.HighScores` (patrón IIFE, sin exports ES ni bundler). API pública:
+
+- `HighScores.load()` → `{ scores, bestCombo, maxLines }`, con `scores` ordenado descendente y recortado a un máximo de 5 entradas.
+- `HighScores.qualifies(score)` → `boolean`, indica si una puntuación entraría en el top 5 actual.
+- `HighScores.add(entry)` → normaliza y añade una entrada, reordena, recorta a 5, actualiza los agregados históricos `bestCombo`/`maxLines` y persiste el resultado.
+- `HighScores.reset()` → borra records y agregados.
+
+Todo acceso a `localStorage` está envuelto en `try/catch` con fallback a un estado en memoria (necesario porque el juego también puede abrirse con `file://`), y cualquier dato corrupto o con forma inesperada en el storage se trata como si no hubiera datos guardados. El módulo no dibuja ninguna UI: la pantalla de Game Over y la pantalla de inicio consumen esta API por separado.
 
 ### Flujo del juego
 
@@ -159,6 +173,7 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ├── index.html      # Estructura del DOM y canvas
 ├── style.css       # Estilos del juego (dark theme)
 ├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── highscores.js   # Persistencia de puntuaciones altas en localStorage
 └── README.md
 ```
 
