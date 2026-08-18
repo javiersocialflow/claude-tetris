@@ -21,6 +21,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
     - [3. `game.js`](#3-gamejs)
+    - [4. `highscores.js`](#4-highscoresjs)
     - [Flujo del juego](#flujo-del-juego)
   - [Tecnologías](#tecnologías)
   - [Estructura del proyecto](#estructura-del-proyecto)
@@ -118,6 +119,17 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
+### 4. `highscores.js`
+
+Módulo independiente y sin dependencias del DOM que persiste la tabla de puntuaciones altas en `localStorage` (clave `tetris.highscores`, payload versionado `{ v, scores, bestCombo, maxLines }`). Se carga con `<script src="highscores.js"></script>` **antes** que `game.js` y se auto-registra en `window.HighScores` (patrón IIFE, sin exports ES ni bundler). API pública:
+
+- `HighScores.load()` → `{ scores, bestCombo, maxLines }`, con `scores` ordenado descendente y recortado a un máximo de 5 entradas.
+- `HighScores.qualifies(score)` → `boolean`, indica si una puntuación entraría en el top 5 actual.
+- `HighScores.add(entry)` → normaliza y añade una entrada, reordena, recorta a 5, actualiza los agregados históricos `bestCombo`/`maxLines` y persiste el resultado.
+- `HighScores.reset()` → borra records y agregados.
+
+Todo acceso a `localStorage` está envuelto en `try/catch` con fallback a un estado en memoria (necesario porque el juego también puede abrirse con `file://`), y cualquier dato corrupto o con forma inesperada en el storage se trata como si no hubiera datos guardados. El módulo no dibuja ninguna UI: la pantalla de Game Over y la pantalla de inicio consumen esta API por separado.
+
 ### Flujo del juego
 
 ```
@@ -159,6 +171,7 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ├── index.html      # Estructura del DOM y canvas
 ├── style.css       # Estilos del juego (dark theme)
 ├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── highscores.js   # Persistencia de puntuaciones altas en localStorage
 └── README.md
 ```
 
