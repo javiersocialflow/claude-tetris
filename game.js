@@ -161,6 +161,24 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
+const pauseMenu = document.getElementById('pause-menu');
+const pauseMainView = document.getElementById('pause-main-view');
+const pauseControlsView = document.getElementById('pause-controls-view');
+const resumeBtn = document.getElementById('resume-btn');
+const restartPauseBtn = document.getElementById('restart-pause-btn');
+const controlsBtn = document.getElementById('controls-btn');
+const backBtn = document.getElementById('back-btn');
+const startLevelSelect = document.getElementById('start-level-select');
+const pauseControlsList = document.querySelector('.pause-controls-list');
+const sidebarControlsList = document.querySelector('.controls ul');
+
+const START_LEVEL_KEY = 'tetris.startLevel';
+
+let board, current, next, score, lines, level, startLevel, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+
+function computeDropInterval(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
 // combo: -1 = sin racha activa, 0 = primera línea de una racha,
 // N = N líneas consecutivas limpiadas justo después de la primera.
 // maxCombo / maxLinesAtOnce son los máximos alcanzados durante la partida
@@ -231,6 +249,9 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
+    level = startLevel + Math.floor(lines / 10);
+    dropInterval = computeDropInterval(level);
+    updateHUD();
     combo++; // -1 -> 0 en la primera línea de la racha, sube en cada limpieza consecutiva
     if (combo > 0) score += 50 * combo * level; // bonus de combo a partir de la 2ª limpieza consecutiva
     if (combo > maxCombo) maxCombo = combo;
@@ -368,17 +389,45 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
+function getStoredStartLevel() {
+  try {
+    const n = parseInt(localStorage.getItem(START_LEVEL_KEY), 10);
+    if (n >= 1 && n <= 15) return n;
+  } catch (e) {
+    // localStorage no disponible (p.ej. abierto con file://)
+  }
+  return 1;
+}
+
+function setStoredStartLevel(n) {
+  try {
+    localStorage.setItem(START_LEVEL_KEY, String(n));
+  } catch (e) {
+    // localStorage no disponible (p.ej. abierto con file://)
+  }
+}
+
+function showPauseMainView() {
+  pauseMainView.classList.remove('hidden');
+  pauseControlsView.classList.add('hidden');
+}
+
+function showPauseControlsView() {
+  pauseMainView.classList.add('hidden');
+  pauseControlsView.classList.remove('hidden');
+}
+
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    pauseMenu.classList.add('hidden');
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    showPauseMainView();
+    pauseMenu.classList.remove('hidden');
   }
 }
 
@@ -402,24 +451,29 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
+  startLevel = getStoredStartLevel();
+  level = startLevel;
   level = 1;
   combo = -1;
   maxCombo = 0;
   maxLinesAtOnce = 0;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = computeDropInterval(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
+  startLevelSelect.value = String(level);
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   // ignore game shortcuts while a form control (e.g. #skin-select) has focus,
   // so arrow keys/space there change the control instead of moving the piece
   const tag = e.target && e.target.tagName;
@@ -449,6 +503,17 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+resumeBtn.addEventListener('click', togglePause);
+restartPauseBtn.addEventListener('click', init);
+controlsBtn.addEventListener('click', showPauseControlsView);
+backBtn.addEventListener('click', showPauseMainView);
+startLevelSelect.addEventListener('change', () => {
+  setStoredStartLevel(parseInt(startLevelSelect.value, 10));
+});
+
+// El sub-panel "Ver controles" del menú de pausa reutiliza la misma lista
+// de teclas que el panel lateral, para no mantener dos copias sincronizadas.
+pauseControlsList.innerHTML = sidebarControlsList.innerHTML;
 
 const skinSelect = document.getElementById('skin-select');
 if (skinSelect) {

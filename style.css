@@ -203,3 +203,103 @@ kbd {
 #restart-btn:hover {
   background: #9bbdff;
 }
+
+/* ---- Menú de pausa ---- */
+.pause-box {
+  width: 220px;
+}
+
+.pause-view.hidden {
+  display: none;
+}
+
+#pause-main-view,
+#pause-controls-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.pause-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #7aa2f7;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.menu-btn {
+  background: #22223a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.menu-btn:hover {
+  background: #2a2a45;
+  border-color: #7aa2f7;
+}
+
+.menu-btn-primary {
+  background: #7aa2f7;
+  color: #0f0f17;
+  border-color: #7aa2f7;
+}
+
+.menu-btn-primary:hover {
+  background: #9bbdff;
+}
+
+.pause-level-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pause-level-select label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #555570;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pause-level-select select {
+  background: #1a1a25;
+  color: #7aa2f7;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pause-controls-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.pause-controls-list li {
+  font-size: 13px;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
