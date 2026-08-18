@@ -1,5 +1,74 @@
 'use strict';
 
+// Fallback mínimo de HighScores: si el módulo highscores.js (otra unidad de trabajo)
+// todavía no está mergeado, definimos aquí una implementación equivalente sobre
+// localStorage con la misma clave, para que la pantalla de inicio funcione sola.
+(function () {
+  if (window.HighScores) return;
+
+  const STORAGE_KEY = 'tetris.highscores';
+  const MAX_ENTRIES = 5;
+
+  function emptyData() {
+    return { scores: [], bestCombo: 0, maxLines: 0 };
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return emptyData();
+      const data = JSON.parse(raw);
+      return {
+        scores: Array.isArray(data.scores) ? data.scores : [],
+        bestCombo: typeof data.bestCombo === 'number' ? data.bestCombo : 0,
+        maxLines: typeof data.maxLines === 'number' ? data.maxLines : 0,
+      };
+    } catch (e) {
+      return emptyData();
+    }
+  }
+
+  function save(data) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      // localStorage no disponible (modo privado, cuota, etc.): ignorar en silencio.
+    }
+  }
+
+  function qualifies(score) {
+    try {
+      const data = load();
+      if (data.scores.length < MAX_ENTRIES) return true;
+      const min = Math.min(...data.scores.map(entry => entry.score));
+      return score > min;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function add(entry) {
+    try {
+      const data = load();
+      data.scores.push({ name: (entry && entry.name) || '---', score: (entry && entry.score) || 0 });
+      data.scores.sort((a, b) => b.score - a.score);
+      data.scores = data.scores.slice(0, MAX_ENTRIES);
+      if (entry && typeof entry.combo === 'number') data.bestCombo = Math.max(data.bestCombo, entry.combo);
+      if (entry && typeof entry.lines === 'number') data.maxLines = Math.max(data.maxLines, entry.lines);
+      save(data);
+      return data;
+    } catch (e) {
+      return load();
+    }
+  }
+
+  function reset() {
+    save(emptyData());
+  }
+
+  window.HighScores = { load, qualifies, add, reset };
+})();
+
 const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
@@ -39,8 +108,15 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const startScreen = document.getElementById('start-screen');
+const playBtn = document.getElementById('play-btn');
+const clearScoresBtn = document.getElementById('clear-scores-btn');
+const highscoreBody = document.getElementById('highscore-body');
+const bestComboEl = document.getElementById('best-combo');
+const maxLinesEl = document.getElementById('max-lines');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let gameStarted = false;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -218,6 +294,44 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
+const START_SCREEN_TOP_N = 5;
+
+function renderHighScores() {
+  const data = window.HighScores.load();
+  const scores = data.scores || [];
+
+  highscoreBody.innerHTML = '';
+  if (scores.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td class="empty-row" colspan="3">Sin puntuaciones todavía</td>';
+    highscoreBody.appendChild(row);
+  } else {
+    scores.slice(0, START_SCREEN_TOP_N).forEach((entry, i) => {
+      const row = document.createElement('tr');
+      const rank = document.createElement('td');
+      rank.textContent = String(i + 1);
+      const name = document.createElement('td');
+      name.textContent = entry.name || '---';
+      const points = document.createElement('td');
+      points.textContent = (entry.score || 0).toLocaleString();
+      row.appendChild(rank);
+      row.appendChild(name);
+      row.appendChild(points);
+      highscoreBody.appendChild(row);
+    });
+  }
+
+  bestComboEl.textContent = data.bestCombo || 0;
+  maxLinesEl.textContent = data.maxLines || 0;
+}
+
+function startGame() {
+  if (gameStarted) return;
+  gameStarted = true;
+  startScreen.classList.add('hidden');
+  init();
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
@@ -275,6 +389,13 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (!gameStarted) {
+    if (e.code === 'Enter' || e.code === 'Space') {
+      e.preventDefault();
+      startGame();
+    }
+    return;
+  }
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -301,4 +422,13 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
-init();
+playBtn.addEventListener('click', startGame);
+
+clearScoresBtn.addEventListener('click', () => {
+  if (confirm('¿Seguro que quieres borrar todos los records?')) {
+    window.HighScores.reset();
+    renderHighScores();
+  }
+});
+
+renderHighScores();

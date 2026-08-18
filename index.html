@@ -42,6 +42,36 @@
           </ul>
         </div>
       </aside>
+
+      <div id="start-screen" class="start-screen">
+        <div class="start-box">
+          <h2 class="start-title">TETRIS</h2>
+          <button id="play-btn">Jugar</button>
+
+          <div class="highscores">
+            <span class="label">MEJORES PUNTUACIONES</span>
+            <table class="highscore-table">
+              <thead>
+                <tr><th>#</th><th>Nombre</th><th>Puntos</th></tr>
+              </thead>
+              <tbody id="highscore-body"></tbody>
+            </table>
+          </div>
+
+          <div class="start-stats">
+            <div class="start-stat">
+              <span class="label">MEJOR COMBO</span>
+              <span class="value" id="best-combo">0</span>
+            </div>
+            <div class="start-stat">
+              <span class="label">LÍNEAS MÁXIMAS</span>
+              <span class="value" id="max-lines">0</span>
+            </div>
+          </div>
+
+          <button id="clear-scores-btn">Borrar records</button>
+        </div>
+      </div>
     </div>
 
     <div id="overlay" class="overlay hidden">
