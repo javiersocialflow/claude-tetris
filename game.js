@@ -154,12 +154,18 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
+const comboEl = document.getElementById('combo');
+const comboMaxEl = document.getElementById('combo-max');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+// combo: -1 = sin racha activa, 0 = primera línea de una racha,
+// N = N líneas consecutivas limpiadas justo después de la primera.
+// maxCombo / maxLinesAtOnce son los máximos alcanzados durante la partida
+// (se leen desde fuera, p.ej. por la pantalla de game over / records).
+let board, current, next, score, lines, level, combo, maxCombo, maxLinesAtOnce, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -225,10 +231,16 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
+    combo++; // -1 -> 0 en la primera línea de la racha, sube en cada limpieza consecutiva
+    if (combo > 0) score += 50 * combo * level; // bonus de combo a partir de la 2ª limpieza consecutiva
+    if (combo > maxCombo) maxCombo = combo;
+    if (cleared > maxLinesAtOnce) maxLinesAtOnce = cleared;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-    updateHUD();
+  } else {
+    combo = -1; // lock sin limpiar ninguna línea rompe la racha
   }
+  updateHUD();
 }
 
 function ghostY() {
@@ -273,6 +285,8 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  comboEl.textContent = combo > 0 ? combo : 0;
+  comboMaxEl.textContent = `Máx: ${maxCombo}`; // maxCombo nunca es negativo: solo sube desde 0
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -389,6 +403,9 @@ function init() {
   score = 0;
   lines = 0;
   level = 1;
+  combo = -1;
+  maxCombo = 0;
+  maxLinesAtOnce = 0;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
