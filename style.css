@@ -80,6 +80,41 @@ body {
   border-radius: 4px;
 }
 
+/* ---- Selector de skin ---- */
+#skin-select {
+  width: 100%;
+  background: #22223a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---- Variaciones visuales por skin (ver THEMES en game.js) ---- */
+body[data-skin='neon'] #board,
+body[data-skin='neon'] #next-canvas {
+  background: #000000;
+  border-color: #00e5ff;
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.35);
+}
+
+body[data-skin='pastel'] #board,
+body[data-skin='pastel'] #next-canvas {
+  background: #26262f;
+  border-color: #b8b8d0;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+}
+
+body[data-skin='pixel'] #board,
+body[data-skin='pixel'] #next-canvas {
+  background: #1a1a25;
+  border-color: #4a4a5a;
+  image-rendering: pixelated;
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;

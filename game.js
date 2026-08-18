@@ -28,6 +28,125 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+const THEMES = {
+  retro: {
+    name: 'Retro',
+    colors: COLORS,
+    gridColor: '#22222e',
+    bg: '#1a1a25',
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      // highlight
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+      context.globalAlpha = 1;
+    },
+  },
+  neon: {
+    name: 'Neon',
+    colors: [
+      null,
+      '#00e5ff', // I
+      '#ffee00', // O
+      '#e040fb', // T
+      '#00ff6a', // S
+      '#ff1744', // Z
+      '#3d5cff', // J
+      '#ff9100', // L
+    ],
+    gridColor: '#141420',
+    bg: '#000000',
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.shadowColor = color;
+      context.shadowBlur = size * 0.6;
+      context.fillStyle = color;
+      context.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
+      // reset shadow so the glow doesn't leak into subsequent draws (grid, text, etc.)
+      context.shadowBlur = 0;
+      context.shadowColor = 'transparent';
+      context.globalAlpha = 1;
+    },
+  },
+  pastel: {
+    name: 'Pastel',
+    colors: [
+      null,
+      '#a8dadc', // I
+      '#fff3b0', // O
+      '#d8bbff', // T
+      '#b8e6b8', // S
+      '#ffb3ba', // Z
+      '#bcd4ff', // J
+      '#ffd9b3', // L
+    ],
+    gridColor: '#3a3a4a',
+    bg: '#26262f',
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      const px = x * size + 1;
+      const py = y * size + 1;
+      const w = size - 2;
+      const h = size - 2;
+      const radius = Math.min(6, w / 3, h / 3);
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      context.beginPath();
+      if (typeof context.roundRect === 'function') {
+        context.roundRect(px, py, w, h, radius);
+      } else {
+        // manual rounded-rect fallback for browsers without roundRect support
+        context.moveTo(px + radius, py);
+        context.arcTo(px + w, py, px + w, py + h, radius);
+        context.arcTo(px + w, py + h, px, py + h, radius);
+        context.arcTo(px, py + h, px, py, radius);
+        context.arcTo(px, py, px + w, py, radius);
+        context.closePath();
+      }
+      context.fill();
+      context.globalAlpha = 1;
+    },
+  },
+  pixel: {
+    name: 'Pixel art',
+    colors: COLORS,
+    gridColor: '#22222e',
+    bg: '#1a1a25',
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      const px = x * size + 1;
+      const py = y * size + 1;
+      const s = size - 2;
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      context.fillRect(px, py, s, s);
+      // 3x3 sub-block texture to fake 8-bit pixel art shading
+      const sub = s / 3;
+      const lightShade = 'rgba(255,255,255,0.2)';
+      const darkShade = 'rgba(0,0,0,0.18)';
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const parity = (r + c) % 3;
+          if (parity === 1) continue; // leave some cells as the base color
+          context.fillStyle = parity === 0 ? lightShade : darkShade;
+          context.fillRect(px + c * sub, py + r * sub, sub, sub);
+        }
+      }
+      context.globalAlpha = 1;
+    },
+  },
+};
+
+let currentTheme = THEMES.retro;
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -157,19 +276,28 @@ function updateHUD() {
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
-  if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  currentTheme.drawBlock(context, x, y, colorIndex, size, alpha);
+}
+
+function applyTheme(id) {
+  const themeId = Object.prototype.hasOwnProperty.call(THEMES, id) ? id : 'retro';
+  currentTheme = THEMES[themeId];
+  try {
+    localStorage.setItem('tetris.skin', themeId);
+  } catch (e) {
+    // localStorage unavailable (file://, private mode, quota, etc.) — ignore
+  }
+  document.body.dataset.skin = themeId;
+  const skinSelect = document.getElementById('skin-select');
+  if (skinSelect) skinSelect.value = themeId;
+  if (board) {
+    draw();
+    drawNext();
+  }
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = currentTheme.gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -275,6 +403,10 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  // ignore game shortcuts while a form control (e.g. #skin-select) has focus,
+  // so arrow keys/space there change the control instead of moving the piece
+  const tag = e.target && e.target.tagName;
+  if (tag === 'SELECT' || tag === 'INPUT' || tag === 'BUTTON' || tag === 'TEXTAREA') return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -300,5 +432,20 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+const skinSelect = document.getElementById('skin-select');
+if (skinSelect) {
+  skinSelect.addEventListener('change', function () {
+    applyTheme(this.value);
+  });
+}
+
+let savedSkin = 'retro';
+try {
+  savedSkin = localStorage.getItem('tetris.skin') || 'retro';
+} catch (e) {
+  savedSkin = 'retro';
+}
+applyTheme(savedSkin);
 
 init();
