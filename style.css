@@ -160,3 +160,126 @@ kbd {
 #restart-btn:hover {
   background: #9bbdff;
 }
+
+/* ---- Highscores (game over) ---- */
+.highscore-panel.hidden,
+.highscore-entry.hidden {
+  display: none;
+}
+
+.highscore-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.highscore-entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#highscore-name {
+  background: #1a1a25;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 6px 8px;
+  font-size: 13px;
+  width: 110px;
+  text-align: center;
+  font-family: inherit;
+}
+
+#highscore-name:focus {
+  outline: none;
+  border-color: #7aa2f7;
+}
+
+#highscore-save-btn {
+  background: #7aa2f7;
+  color: #0f0f17;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s;
+}
+
+#highscore-save-btn:hover {
+  background: #9bbdff;
+}
+
+.highscore-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  width: 100%;
+  min-width: 220px;
+}
+
+.highscore-table th {
+  color: #555570;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-align: left;
+  padding: 2px 6px;
+  font-weight: 600;
+}
+
+.highscore-table th:last-child,
+.highscore-table td:last-child {
+  text-align: right;
+}
+
+.highscore-table td {
+  padding: 3px 6px;
+  color: #ccc;
+}
+
+.highscore-table tr.highscore-new td {
+  background: rgba(122, 162, 247, 0.18);
+  color: #7aa2f7;
+  font-weight: 700;
+}
+
+.highscore-table tr.highscore-new td:first-child {
+  border-left: 2px solid #7aa2f7;
+}
+
+.highscore-table tr.highscore-new td:last-child {
+  border-right: 2px solid #7aa2f7;
+}
+
+.highscore-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: #888;
+}
+
+.highscore-stats strong {
+  font-family: 'Courier New', Courier, monospace;
+  color: #7aa2f7;
+}
+
+#clear-highscores-btn {
+  background: transparent;
+  border: 1px solid #3a3a5a;
+  color: #888;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+#clear-highscores-btn:hover {
+  border-color: #e57373;
+  color: #e57373;
+}
