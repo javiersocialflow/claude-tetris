@@ -1,5 +1,73 @@
 'use strict';
 
+// Fallback mínimo para HighScores por si el módulo highscores.js (unidad 3)
+// aún no está mergeado. Implementa la misma API sobre la misma clave de
+// localStorage: load(), qualifies(score), add(entry), reset().
+(function initHighScoresFallback() {
+  if (window.HighScores) return;
+
+  const KEY = 'tetris.highscores';
+  const MAX_ENTRIES = 5;
+
+  function safeLoad() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return { scores: [], bestCombo: 0, maxLines: 0 };
+      const parsed = JSON.parse(raw);
+      return {
+        scores: Array.isArray(parsed.scores) ? parsed.scores : [],
+        bestCombo: parsed.bestCombo || 0,
+        maxLines: parsed.maxLines || 0,
+      };
+    } catch (e) {
+      return { scores: [], bestCombo: 0, maxLines: 0 };
+    }
+  }
+
+  function safeSave(data) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data));
+    } catch (e) {
+      // localStorage no disponible (privado / cuota excedida): se ignora.
+    }
+  }
+
+  window.HighScores = {
+    load: safeLoad,
+    qualifies(score) {
+      try {
+        const data = safeLoad();
+        if (data.scores.length < MAX_ENTRIES) return true;
+        const lowest = Math.min(...data.scores.map(s => s.score));
+        return score > lowest;
+      } catch (e) {
+        return false;
+      }
+    },
+    add(entry) {
+      try {
+        const data = safeLoad();
+        data.scores.push(entry);
+        data.scores.sort((a, b) => b.score - a.score);
+        data.scores = data.scores.slice(0, MAX_ENTRIES);
+        data.bestCombo = Math.max(data.bestCombo || 0, entry.combo || 0);
+        data.maxLines = Math.max(data.maxLines || 0, entry.maxLinesAtOnce || 0);
+        safeSave(data);
+        return entry;
+      } catch (e) {
+        return entry;
+      }
+    },
+    reset() {
+      try {
+        localStorage.removeItem(KEY);
+      } catch (e) {
+        // ignorado
+      }
+    },
+  };
+})();
+
 const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
@@ -160,7 +228,17 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const highscorePanel = document.getElementById('highscore-panel');
+const highscoreEntry = document.getElementById('highscore-entry');
+const highscoreNameInput = document.getElementById('highscore-name');
+const highscoreSaveBtn = document.getElementById('highscore-save-btn');
+const highscoreTbody = document.getElementById('highscore-tbody');
+const bestComboEl = document.getElementById('best-combo');
+const maxLinesEl = document.getElementById('max-lines');
+const clearHighscoresBtn = document.getElementById('clear-highscores-btn');
 
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let lastSavedEntry = null;
 const pauseMenu = document.getElementById('pause-menu');
 const pauseMainView = document.getElementById('pause-main-view');
 const pauseControlsView = document.getElementById('pause-controls-view');
@@ -381,12 +459,110 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
+function isNewEntry(entry) {
+  if (!lastSavedEntry) return false;
+  return (
+    entry.name === lastSavedEntry.name &&
+    entry.score === lastSavedEntry.score &&
+    entry.date === lastSavedEntry.date
+  );
+}
+
+function renderHighScores() {
+  try {
+    const data = HighScores.load();
+    const scores = (data && Array.isArray(data.scores)) ? data.scores : [];
+    highscoreTbody.innerHTML = '';
+    scores.forEach((entry, i) => {
+      if (!entry) return;
+      const tr = document.createElement('tr');
+      if (isNewEntry(entry)) tr.classList.add('highscore-new');
+
+      const safeScore = Number(entry.score) || 0;
+
+      const posTd = document.createElement('td');
+      posTd.textContent = i + 1;
+      const nameTd = document.createElement('td');
+      nameTd.textContent = entry.name != null ? String(entry.name) : '';
+      const scoreTd = document.createElement('td');
+      scoreTd.textContent = safeScore.toLocaleString();
+
+      tr.append(posTd, nameTd, scoreTd);
+      highscoreTbody.appendChild(tr);
+    });
+    bestComboEl.textContent = (data && data.bestCombo) || 0;
+    maxLinesEl.textContent = (data && data.maxLines) || 0;
+  } catch (e) {
+    highscoreTbody.innerHTML = '';
+    bestComboEl.textContent = 0;
+    maxLinesEl.textContent = 0;
+  }
+}
+
+function showHighScoreEntry() {
+  highscoreEntry.classList.remove('hidden');
+  highscoreNameInput.value = '';
+  highscoreNameInput.focus();
+}
+
+function hideHighScoreEntry() {
+  highscoreEntry.classList.add('hidden');
+}
+
+function saveHighScore() {
+  const name = highscoreNameInput.value.trim().slice(0, 10) || 'AAA';
+  const entry = {
+    name,
+    score,
+    lines,
+    level,
+    combo: typeof maxCombo !== 'undefined' ? maxCombo : 0,
+    maxLinesAtOnce: typeof maxLinesAtOnce !== 'undefined' ? maxLinesAtOnce : 0,
+    date: new Date().toISOString(),
+  };
+  const saved = HighScores.add(entry);
+  lastSavedEntry = saved || entry;
+  hideHighScoreEntry();
+  renderHighScores();
+}
+
+highscoreSaveBtn.addEventListener('click', saveHighScore);
+highscoreNameInput.addEventListener('keydown', e => {
+  if (e.code === 'Enter' || e.key === 'Enter') {
+    e.preventDefault();
+    saveHighScore();
+  }
+});
+
+clearHighscoresBtn.addEventListener('click', () => {
+  if (confirm('¿Seguro que quieres borrar los records?')) {
+    HighScores.reset();
+    lastSavedEntry = null;
+    renderHighScores();
+  }
+});
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+
+  highscorePanel.classList.remove('hidden');
+  lastSavedEntry = null;
+  hideHighScoreEntry();
+
+  let qualifies = false;
+  try {
+    qualifies = HighScores.qualifies(score);
+  } catch (e) {
+    qualifies = false;
+  }
+
+  if (qualifies) showHighScoreEntry();
+
+  renderHighScores();
 }
 
 function getStoredStartLevel() {
@@ -466,6 +642,9 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  highscorePanel.classList.add('hidden');
+  hideHighScoreEntry();
+  lastSavedEntry = null;
   pauseMenu.classList.add('hidden');
   startLevelSelect.value = String(level);
   cancelAnimationFrame(animId);

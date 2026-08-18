@@ -63,6 +63,28 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+
+        <div id="highscore-panel" class="highscore-panel hidden">
+          <div id="highscore-entry" class="highscore-entry hidden">
+            <input type="text" id="highscore-name" maxlength="10" placeholder="Tu nombre" autocomplete="off" />
+            <button id="highscore-save-btn">Guardar</button>
+          </div>
+
+          <table class="highscore-table">
+            <thead>
+              <tr><th>#</th><th>Nombre</th><th>Puntos</th></tr>
+            </thead>
+            <tbody id="highscore-tbody"></tbody>
+          </table>
+
+          <div id="highscore-stats" class="highscore-stats">
+            <span>Mejor combo: <strong id="best-combo">0</strong></span>
+            <span>Líneas máximas: <strong id="max-lines">0</strong></span>
+          </div>
+
+          <button id="clear-highscores-btn">Borrar records</button>
+        </div>
+
         <button id="restart-btn">Reiniciar</button>
       </div>
     </div>
