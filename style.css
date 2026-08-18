@@ -74,11 +74,54 @@ body {
   letter-spacing: 1px;
 }
 
+.value-sub {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #555570;
+  letter-spacing: 1px;
+}
+
 #next-canvas {
   display: block;
   border: 1px solid #2a2a3a;
   background: #1a1a25;
   border-radius: 4px;
+}
+
+/* ---- Selector de skin ---- */
+#skin-select {
+  width: 100%;
+  background: #22223a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---- Variaciones visuales por skin (ver THEMES en game.js) ---- */
+body[data-skin='neon'] #board,
+body[data-skin='neon'] #next-canvas {
+  background: #000000;
+  border-color: #00e5ff;
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.35);
+}
+
+body[data-skin='pastel'] #board,
+body[data-skin='pastel'] #next-canvas {
+  background: #26262f;
+  border-color: #b8b8d0;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+}
+
+body[data-skin='pixel'] #board,
+body[data-skin='pixel'] #next-canvas {
+  background: #1a1a25;
+  border-color: #4a4a5a;
+  image-rendering: pixelated;
 }
 
 /* ---- Controles ---- */
@@ -199,6 +242,44 @@ kbd {
 }
 
 #play-btn {
+/* ---- Highscores (game over) ---- */
+.highscore-panel.hidden,
+.highscore-entry.hidden {
+  display: none;
+}
+
+.highscore-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.highscore-entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#highscore-name {
+  background: #1a1a25;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 6px 8px;
+  font-size: 13px;
+  width: 110px;
+  text-align: center;
+  font-family: inherit;
+}
+
+#highscore-name:focus {
+  outline: none;
+  border-color: #7aa2f7;
+}
+
+#highscore-save-btn {
   background: #7aa2f7;
   color: #0f0f17;
   border: none;
@@ -227,6 +308,24 @@ kbd {
   border-collapse: collapse;
   font-family: 'Courier New', Courier, monospace;
   font-size: 12px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s;
+}
+
+#highscore-save-btn:hover {
+  background: #9bbdff;
+}
+
+.highscore-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  width: 100%;
+  min-width: 220px;
 }
 
 .highscore-table th {
@@ -242,6 +341,9 @@ kbd {
 .highscore-table td:first-child {
   text-align: center;
   width: 24px;
+  text-align: left;
+  padding: 2px 6px;
+  font-weight: 600;
 }
 
 .highscore-table th:last-child,
@@ -285,6 +387,82 @@ kbd {
   padding: 6px 16px;
   font-size: 11px;
   cursor: pointer;
+.highscore-table tr.highscore-new td {
+  background: rgba(122, 162, 247, 0.18);
+  color: #7aa2f7;
+  font-weight: 700;
+}
+
+.highscore-table tr.highscore-new td:first-child {
+  border-left: 2px solid #7aa2f7;
+}
+
+.highscore-table tr.highscore-new td:last-child {
+  border-right: 2px solid #7aa2f7;
+}
+
+.highscore-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: #888;
+}
+
+.highscore-stats strong {
+  font-family: 'Courier New', Courier, monospace;
+  color: #7aa2f7;
+}
+
+#clear-highscores-btn {
+  background: transparent;
+  border: 1px solid #3a3a5a;
+  color: #888;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+#clear-highscores-btn:hover {
+  border-color: #e57373;
+  color: #e57373;
+/* ---- Menú de pausa ---- */
+.pause-box {
+  width: 220px;
+}
+
+.pause-view.hidden {
+  display: none;
+}
+
+#pause-main-view,
+#pause-controls-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.pause-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #7aa2f7;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.menu-btn {
+  background: #22223a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
   letter-spacing: 0.5px;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -292,4 +470,62 @@ kbd {
 #clear-scores-btn:hover {
   background: rgba(229, 115, 115, 0.1);
   border-color: #e57373;
+.menu-btn:hover {
+  background: #2a2a45;
+  border-color: #7aa2f7;
+}
+
+.menu-btn-primary {
+  background: #7aa2f7;
+  color: #0f0f17;
+  border-color: #7aa2f7;
+}
+
+.menu-btn-primary:hover {
+  background: #9bbdff;
+}
+
+.pause-level-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pause-level-select label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #555570;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pause-level-select select {
+  background: #1a1a25;
+  color: #7aa2f7;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pause-controls-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.pause-controls-list li {
+  font-size: 13px;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
